@@ -1,4 +1,4 @@
-package kaban.iklan;
+package kaban.iklan.custom;
 
 import android.content.Context;
 import android.graphics.*;
@@ -14,6 +14,7 @@ public class ScrollImageView extends View {
     private final int DEFAULT_PADDING = 10;
     private Display mDisplay;
     private Bitmap mImage;
+    private Bitmap mSliderImage;
 
     /* Current x and y of the touch */
     private float mCurrentX = 0;
@@ -31,36 +32,61 @@ public class ScrollImageView extends View {
     RectF mBounds;
     Paint mRectPaint;
 
+    byte octaveMultiplier;
+
     public ScrollImageView(Context context) {
         super(context);
-        initScrollImageView(context);
+        init(context);
     }
 
-    public ScrollImageView(Context context, AttributeSet attributeSet) {
-        super(context, attributeSet);
-        initScrollImageView(context);
-    }
-
-    private void initScrollImageView(Context context) {
+    private void init(Context context) {
         mDisplay = ((WindowManager)context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
         mPadding = getPadding();
-        setImage(BitmapFactory.decodeResource(getResources(), R.drawable.piano));
+
         mRectPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mRectPaint.setColor(Color.RED);
         mRectPaint.setStrokeWidth(2f);
         mRectPaint.setStyle(Paint.Style.STROKE);
+
+        byte lowestNoteOctave = 3;
+        byte highestNoteOctave = 4;
+        octaveMultiplier = (byte)(highestNoteOctave - lowestNoteOctave + 1);
     }
 
     @Override
-    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+    protected void onSizeChanged(int w, int h, int oldWidth, int oldHeight) {
         mBounds = new RectF( getPaddingLeft(), getPaddingTop(),
                 w - getPaddingRight(), h - getPaddingBottom());
 
-
+        //BitmapFactory.Options options = new BitmapFactory.Options();
+        //options.inJustDecodeBounds = true;
+        Bitmap original = BitmapFactory.decodeResource(getResources(), R.drawable.piano);
+        // rescale the image
         int height = (int) (mBounds.height() * 0.7);
         int width = (int)( mBounds.width() * (height / mBounds.height()));
-        // rescale the image
-        mImage = Bitmap.createScaledBitmap(mImage, width, height, true);
+        Bitmap scaledImage = Bitmap.createScaledBitmap(original, width, height, true);
+        original.recycle();
+
+        if (mImage != null) {
+            mImage.recycle();
+        }
+
+        mImage = Bitmap.createScaledBitmap(scaledImage, width * octaveMultiplier, height, true);
+        Canvas tmpCanvas = new Canvas();
+        tmpCanvas.setBitmap(mImage);
+        Paint paint = new Paint();
+        paint.setAntiAlias(true);
+        paint.setFilterBitmap(true);
+        paint.setDither(true);
+        for(int i= 0; i < octaveMultiplier; i++ ){
+            tmpCanvas.drawBitmap(scaledImage, mTotalX + scaledImage.getWidth() * i, mTotalY, paint);
+        }
+
+        if(mSliderImage != null){
+            mSliderImage.recycle();
+        }
+
+        mSliderImage = Bitmap.createScaledBitmap(mImage, (int)mBounds.width(), 40, true);
     }
 
     @Override
@@ -108,6 +134,7 @@ public class ScrollImageView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
+
         if (mImage == null) {
             return;
         }
@@ -126,8 +153,16 @@ public class ScrollImageView extends View {
         paint.setAntiAlias(true);
         paint.setFilterBitmap(true);
         paint.setDither(true);
-
         canvas.drawBitmap(mImage, mTotalX, mTotalY, paint);
-        canvas.drawRect(mBounds, mRectPaint);
+        canvas.drawBitmap(mSliderImage, 0, mImage.getHeight(), paint);
+
+        float screenToKeyboardRatio = getWidth() * 1.0f / mImage.getWidth();
+        canvas.drawRect(-mTotalX * screenToKeyboardRatio,
+                        mImage.getHeight(),
+                        -mTotalX * screenToKeyboardRatio + mSliderImage.getWidth() * screenToKeyboardRatio,
+                        mImage.getHeight() + 40, mRectPaint);
+
+
+        // canvas.drawRect(mBounds, mRectPaint);
     }
 }
