@@ -10,7 +10,6 @@ import android.view.WindowManager;
 
 public class ScrollImageView extends View {
 
-
     private final int DEFAULT_PADDING = 10;
     private Display mDisplay;
     private Bitmap mImage;
@@ -28,11 +27,17 @@ public class ScrollImageView extends View {
 
     int mDisplayWidth;
     int mDisplayHeight;
+
     int mPadding;
     RectF mBounds;
+    RectF sliderHandleRect;
+
+    float screenToKeyboardRatio;
+
     Paint mRectPaint;
 
     byte octaveMultiplier;
+
 
     public ScrollImageView(Context context) {
         super(context);
@@ -45,7 +50,7 @@ public class ScrollImageView extends View {
 
         mRectPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mRectPaint.setColor(Color.RED);
-        mRectPaint.setStrokeWidth(2f);
+        mRectPaint.setStrokeWidth(4f);
         mRectPaint.setStyle(Paint.Style.STROKE);
 
         byte lowestNoteOctave = 3;
@@ -86,6 +91,7 @@ public class ScrollImageView extends View {
             mSliderImage.recycle();
         }
 
+        screenToKeyboardRatio = w * 1.0f / mImage.getWidth();
         mSliderImage = Bitmap.createScaledBitmap(mImage, (int)mBounds.width(), 40, true);
     }
 
@@ -111,13 +117,17 @@ public class ScrollImageView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (event.getAction() == MotionEvent.ACTION_DOWN) {
+        float x =  event.getRawX();
+        float y =  event.getRawY();
+
+        if (event.getAction() == MotionEvent.ACTION_DOWN &&
+            sliderHandleRect.contains(x, y)) {
+
             mCurrentX = event.getRawX();
             mCurrentY = event.getRawY();
         }
-        else if (event.getAction() == MotionEvent.ACTION_MOVE) {
-            float x = event.getRawX();
-            float y = event.getRawY();
+        else if (event.getAction() == MotionEvent.ACTION_MOVE &&
+                sliderHandleRect.contains(x, y)) {
 
             // Update how much the touch moved
             mDeltaX = x - mCurrentX;
@@ -139,15 +149,15 @@ public class ScrollImageView extends View {
             return;
         }
 
-        float newTotalX = mTotalX + mDeltaX;
+        float newTotalX = mTotalX - mDeltaX;
         // Don't scroll off the left or right edges of the bitmap.
         if (mPadding > newTotalX && newTotalX > getMeasuredWidth() - mImage.getWidth() - mPadding)
-            mTotalX += mDeltaX;
+            mTotalX -= mDeltaX;
 
-        float newTotalY = mTotalY + mDeltaY;
+        float newTotalY = mTotalY - mDeltaY;
         // Don't scroll off the top or bottom edges of the bitmap.
         if (mPadding > newTotalY && newTotalY > getMeasuredHeight() - mImage.getHeight() - mPadding)
-            mTotalY += mDeltaY;
+            mTotalY -= mDeltaY;
 
         Paint paint = new Paint();
         paint.setAntiAlias(true);
@@ -156,11 +166,12 @@ public class ScrollImageView extends View {
         canvas.drawBitmap(mImage, mTotalX, mTotalY, paint);
         canvas.drawBitmap(mSliderImage, 0, mImage.getHeight(), paint);
 
-        float screenToKeyboardRatio = getWidth() * 1.0f / mImage.getWidth();
-        canvas.drawRect(-mTotalX * screenToKeyboardRatio,
-                        mImage.getHeight(),
-                        -mTotalX * screenToKeyboardRatio + mSliderImage.getWidth() * screenToKeyboardRatio,
-                        mImage.getHeight() + 40, mRectPaint);
+        sliderHandleRect = new RectF(-mTotalX * screenToKeyboardRatio,
+                                     mImage.getHeight(),
+                                     -mTotalX * screenToKeyboardRatio + mSliderImage.getWidth() * screenToKeyboardRatio,
+                                     mImage.getHeight() + 40);
+
+        canvas.drawRect(sliderHandleRect, mRectPaint);
 
 
         // canvas.drawRect(mBounds, mRectPaint);
