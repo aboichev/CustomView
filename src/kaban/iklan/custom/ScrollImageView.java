@@ -3,10 +3,8 @@ package kaban.iklan.custom;
 import android.content.Context;
 import android.graphics.*;
 import android.util.AttributeSet;
-import android.view.Display;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.WindowManager;
+import android.util.DisplayMetrics;
+import android.view.*;
 
 public class ScrollImageView extends View {
 
@@ -63,7 +61,7 @@ public class ScrollImageView extends View {
         mBounds = new RectF( getPaddingLeft(), getPaddingTop(),
                 w - getPaddingRight(), h - getPaddingBottom());
 
-        //BitmapFactory.Options options = new BitmapFactory.Options();
+         //BitmapFactory.Options options = new BitmapFactory.Options();
         //options.inJustDecodeBounds = true;
         Bitmap original = BitmapFactory.decodeResource(getResources(), R.drawable.piano);
         // rescale the image
@@ -115,19 +113,20 @@ public class ScrollImageView extends View {
         this.mPadding = padding;
     }
 
+    boolean isDragging = false;
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        float x =  event.getRawX();
-        float y =  event.getRawY();
+        float x =  event.getX();
+        float y =  event.getY();
 
-        if (event.getAction() == MotionEvent.ACTION_DOWN &&
-            sliderHandleRect.contains(x, y)) {
+        if (event.getAction() == MotionEvent.ACTION_DOWN && sliderHandleRect.contains(x, y)) {
 
             mCurrentX = event.getRawX();
             mCurrentY = event.getRawY();
+            isDragging = true;
         }
-        else if (event.getAction() == MotionEvent.ACTION_MOVE &&
-                sliderHandleRect.contains(x, y)) {
+        else if (event.getAction() == MotionEvent.ACTION_MOVE && isDragging) {
 
             // Update how much the touch moved
             mDeltaX = x - mCurrentX;
@@ -137,6 +136,9 @@ public class ScrollImageView extends View {
             mCurrentY = y;
 
             invalidate();
+        }
+        else if (event.getAction() == MotionEvent.ACTION_UP) {
+            isDragging = false;
         }
         // Consume event
         return true;
@@ -176,4 +178,6 @@ public class ScrollImageView extends View {
 
         // canvas.drawRect(mBounds, mRectPaint);
     }
+
+
 }
